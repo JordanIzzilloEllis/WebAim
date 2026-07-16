@@ -21,6 +21,7 @@ export const DIFFICULTIES = {
   easy: { key: 'easy', label: 'Easy', time: 45, exposure: 1.5, accent: '#3f9b52' },
   medium: { key: 'medium', label: 'Medium', time: 35, exposure: 1.05, accent: '#2f7fc4' },
   hard: { key: 'hard', label: 'Hard', time: 25, exposure: 0.75, accent: '#e0552b' },
+  extreme: { key: 'extreme', label: 'Extreme', time: 20, exposure: 0.5, accent: '#d61f3a' },
 }
 
 export const DEFAULT_DIFFICULTY = 'medium'
