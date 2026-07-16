@@ -433,16 +433,43 @@
   50% { text-shadow: 0 2px 20px rgba(217, 148, 0, 0.8), 0 0 36px rgba(255, 200, 60, 0.7); }
 }
 
+/* Keyed off data-tier (the same tier the quip above renders from — see
+   scoreResultFor in GameOver.jsx), not the letter, so the grade always
+   escalates in exact lockstep with the quip: same score percentage, same
+   colour, every time. Two tiers ("insane"/"damn") both read the letter S,
+   but data-tier still lets S itself grow/glow further at "damn". */
 .grade {
-  font-size: 66px;
+  font-size: 54px;
   font-weight: 900;
   line-height: 1;
-  color: var(--accent);
-  text-shadow: 0 2px 14px rgba(224, 85, 43, 0.3);
+  color: #7ec4e8;
   animation: pop 0.3s ease;
 }
-.grade[data-grade='S'] { color: #d99400; text-shadow: 0 2px 14px rgba(217, 148, 0, 0.35); }
-.grade[data-grade='D'] { color: #c94420; text-shadow: 0 2px 12px rgba(201, 68, 32, 0.3); }
+.grade[data-tier='ok'] {
+  color: #3f8ee8;
+}
+.grade[data-tier='good'] {
+  font-size: 58px;
+  color: #9b59d0;
+}
+.grade[data-tier='great'] {
+  font-size: 64px;
+  color: #e0559b;
+  text-shadow: 0 2px 10px rgba(224, 85, 155, 0.4);
+  animation: pop 0.35s ease;
+}
+.grade[data-tier='insane'] {
+  font-size: 70px;
+  color: #e0342b;
+  text-shadow: 0 2px 12px rgba(224, 52, 43, 0.5);
+  animation: pop 0.38s ease;
+}
+.grade[data-tier='damn'] {
+  font-size: 78px;
+  color: #d99400;
+  text-shadow: 0 2px 14px rgba(217, 148, 0, 0.55), 0 0 24px rgba(255, 200, 60, 0.4);
+  animation: pop 0.4s ease, quip-shine 1.4s ease-in-out 0.4s infinite;
+}
 
 .new-record {
   font-size: 16px;

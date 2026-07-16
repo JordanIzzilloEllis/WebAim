@@ -232,6 +232,41 @@ log for full diffs.
     mount lifetime, skips `e.repeat` so holding the key doesn't rapid-fire
     restarts, and runs the same cleanup as Quit (stop the rAF loop, exit
     pointer lock) before calling `onRestart`.
+13. **Average time-to-hit stat + grade now shares the quip's rarity-ladder
+    styling.** `Game3D.jsx` gained `reactionSumMs`/`reactionCount`
+    alongside the existing `fastestHitMs`, updated at the same call site
+    (the head/body hit branch in `handleFire`, so it's peek-target-only,
+    same as fastest); `GameOver.jsx` shows the average in ms next to
+    Fastest Hit. Separately, the S/A/B/C/D grade previously only had custom
+    colours for S (gold) and D (a leftover reddish accent), with A/B/C all
+    sharing one flat size and the difficulty's accent colour — so unlike
+    the quip, it didn't visually escalate at all. Restyled `.grade` in
+    `App.css` to reuse the quip's exact rarity colours (light blue → blue →
+    purple → pink → gold, skipping the quip's red "insane" step since grade
+    only has 5 levels to the quip's 6) with size climbing D→S and the same
+    glow/shimmer treatment kicking in at the top (A gets a glow, S gets the
+    full `quip-shine` animation) — same visual language, deliberately
+    reusing the quip's hex values rather than re-deriving a parallel palette
+    so the two stay in sync if the ladder ever changes.
+14. **Grade and quip unified onto one score-based scale (supersedes most of
+    #13's grade approach).** The user got an A but a lukewarm quip in the
+    same run — because even after #13's shared *palette*, the grade and the
+    quip were still computed from two independent formulas (grade from hit
+    ratio/accuracy/headshot rate; quip from score-vs-perfect-run), so they
+    could legitimately disagree. Fixed at the source in `GameOver.jsx`:
+    replaced both separate functions with one `SCORE_TIERS` table and a
+    single `scoreResultFor(score)` lookup, keyed purely on score percentage
+    of `computeMaxScore()`. Each tier now carries its `grade` letter, `tier`
+    slug, and quip `text` together, so grade and quip are two renderings of
+    the exact same computed value and can never contradict each other
+    again. The old hits/accuracy/headshot-rate-gated grade formula is gone
+    entirely — those stats are still shown in the results grid, just no
+    longer used to gate the letter. `.grade` now keys its CSS off
+    `data-tier` (the same attribute the quip uses) instead of `data-grade`,
+    so a shared score percentage always produces a matching colour on both;
+    "insane" and "damn" both render the letter S but stay visually distinct
+    via `data-tier` (S grows further and picks up the full gold shimmer
+    only at "damn").
 
 ## Working conventions
 

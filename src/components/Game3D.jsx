@@ -52,6 +52,8 @@ export default function Game3D({ difficulty, sensMult, onEnd, onQuit, onRestart 
       resolved: 0,
       escaped: 0,
       fastestHitMs: null,
+      reactionSumMs: 0,
+      reactionCount: 0,
       target: null,
       nextSpawnAt: INITIAL_DELAY,
       snitch: null,
@@ -151,6 +153,7 @@ export default function Game3D({ difficulty, sensMult, onEnd, onQuit, onRestart 
       snitchHits: s.snitchHits,
       snitchSpawned: s.snitchSpawned,
       fastestHitMs: s.fastestHitMs,
+      avgHitMs: s.reactionCount > 0 ? s.reactionSumMs / s.reactionCount : null,
       accuracy: shots > 0 ? s.hits / shots : 0,
       headshotRate: s.hits > 0 ? s.headshots / s.hits : 0,
       timeUsed: +Math.min(diff.time, s.clock).toFixed(1),
@@ -202,6 +205,8 @@ export default function Game3D({ difficulty, sensMult, onEnd, onQuit, onRestart 
         // Reaction time: spawn (cover starts sliding open) to a landed shot.
         const reactionMs = (s.clock - t.spawnAtClock) * 1000
         if (s.fastestHitMs === null || reactionMs < s.fastestHitMs) s.fastestHitMs = reactionMs
+        s.reactionSumMs += reactionMs
+        s.reactionCount += 1
         if (kind === 'head') {
           s.headshots += 1
           sound.headshot(s.combo)
