@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { Vector2, Vector3, Raycaster } from 'three'
 import Environment from './Environment.jsx'
 import Target3D from './Target3D.jsx'
+import Snitch3D from './Snitch3D.jsx'
 import {
   BASE_SENSITIVITY,
   MAX_YAW,
@@ -12,6 +13,8 @@ import {
   PEEK_DISTANCE,
   COVER_SPOTS,
   TARGET_HEAD_Y,
+  SNITCH_BOUNDS,
+  SNITCH_MAX_TRAVEL,
 } from '../config.js'
 
 // Lives inside <Canvas>. Owns the first-person camera (pointer-lock mouse-look),
@@ -20,11 +23,13 @@ export default function GameScene({
   target,
   exposure,
   accent,
+  snitch,
   sensMult,
   clockRef,
   onFire,
   onLockChange,
   spotPickerRef,
+  snitchPathPickerRef,
 }) {
   const { camera, gl, scene, raycaster } = useThree()
   const yaw = useRef(0)
@@ -69,6 +74,75 @@ export default function GameScene({
     }
     // Only the just-used spot is visible (or somehow none) — take what we can.
     return fallback !== -1 ? fallback : order[0]
+  }
+
+  // Expose a flight-path picker for the golden snitch. Unlike the cover
+  // targets (which are only ever partly hidden and always have a valid
+  // head-only peek), the snitch's whole flight has to clear line of sight —
+  // it can fly close to a tall cover pillar and get swallowed for its entire
+  // exposure window otherwise. Sample points along a candidate path
+  // (including the wiggle) and score how many are visible from the player's
+  // eye; a fully-clear path wins immediately, but the snitch always spawns —
+  // if nothing comes back perfectly clear after every attempt, the least-
+  // occluded candidate is used rather than skipping the round.
+  snitchPathPickerRef.current = () => {
+    const obstacles = []
+    scene.traverse((o) => {
+      if (o.isMesh && o.userData && o.userData.kind === 'obstacle') obstacles.push(o)
+    })
+
+    const hasLineOfSight = (point) => {
+      const dir = point.clone().sub(camera.position)
+      const dist = dir.length()
+      dir.normalize()
+      losRay.current.set(camera.position, dir)
+      losRay.current.far = dist - 0.05
+      return losRay.current.intersectObjects(obstacles, false).length === 0
+    }
+
+    const { xMin, xMax, yMin, yMax, zMin, zMax } = SNITCH_BOUNDS
+    const SAMPLES = 20 // fine enough that a thin pillar edge can't slip between checks
+
+    let best = null
+    let bestVisible = -1
+
+    for (let attempt = 0; attempt < 40; attempt++) {
+      const start = new Vector3(rand(xMin, xMax), rand(yMin, yMax), rand(zMin, zMax))
+
+      const dir = new Vector3(rand(-1, 1), rand(-1, 1), rand(-1, 1))
+      if (dir.lengthSq() < 1e-6) dir.set(1, 0, 0)
+      dir.normalize()
+      const travel = rand(SNITCH_MAX_TRAVEL * 0.5, SNITCH_MAX_TRAVEL)
+      const end = start.clone().addScaledVector(dir, travel)
+      end.x = clamp(end.x, xMin, xMax)
+      end.y = clamp(end.y, yMin, yMax)
+      end.z = clamp(end.z, zMin, zMax)
+
+      const pathDir = end.clone().sub(start)
+      const perp = new Vector3(-pathDir.z, 0, pathDir.x)
+      if (perp.lengthSq() < 1e-6) perp.set(1, 0, 0)
+      perp.normalize()
+
+      const wiggleAmp = rand(0.35, 0.75)
+      const wiggleFreq = rand(2, 3.5)
+      const phase = Math.random() * Math.PI * 2
+      const candidate = { start, end, perp, wiggleAmp, wiggleFreq, phase }
+
+      let visibleCount = 0
+      for (let i = 0; i <= SAMPLES; i++) {
+        const e = i / SAMPLES
+        const p = start.clone().lerp(end, e)
+        const wiggle = Math.sin(e * Math.PI * wiggleFreq + phase) * wiggleAmp * Math.sin(e * Math.PI)
+        p.addScaledVector(perp, wiggle)
+        if (hasLineOfSight(p)) visibleCount += 1
+      }
+      if (visibleCount > SAMPLES) return candidate // every sample clear
+      if (visibleCount > bestVisible) {
+        bestVisible = visibleCount
+        best = candidate
+      }
+    }
+    return best
   }
 
   // Keep the latest fire handler without re-binding listeners every render.
@@ -154,10 +228,23 @@ export default function GameScene({
           clockRef={clockRef}
         />
       )}
+      {snitch && (
+        <Snitch3D
+          key={snitch.id}
+          path={snitch.path}
+          spawnAtClock={snitch.spawnAtClock}
+          life={snitch.life}
+          clockRef={clockRef}
+        />
+      )}
     </>
   )
 }
 
 function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v))
+}
+
+function rand(a, b) {
+  return a + Math.random() * (b - a)
 }

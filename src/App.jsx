@@ -29,6 +29,11 @@ export default function App() {
   const [muted, setMuted] = useState(false)
   const [results, setResults] = useState(null)
   const [highScores, setHighScores] = useState(loadHighScores)
+  // Bumped to force Game3D to remount (fresh state) for a quick restart —
+  // the screen stays 'playing' throughout, so a plain re-render wouldn't
+  // reset its internal ref-based game state the way leaving/re-entering
+  // 'playing' naturally does for the menu's Play Again flow.
+  const [restartSeq, setRestartSeq] = useState(0)
 
   useEffect(() => {
     sound.setEnabled(!muted)
@@ -73,6 +78,15 @@ export default function App() {
   const playAgain = useCallback(() => startGame(difficulty), [difficulty, startGame])
   const toggleMute = useCallback(() => setMuted((m) => !m), [])
 
+  // Spacebar mid-round: wipe the current round's stats and start it over
+  // immediately, same difficulty, no trip through the menu or results screen.
+  const quickRestart = useCallback(() => {
+    sound.init()
+    sound.start()
+    setResults(null)
+    setRestartSeq((n) => n + 1)
+  }, [])
+
   return (
     <div className="app">
       <button
@@ -94,7 +108,14 @@ export default function App() {
       )}
 
       {screen === 'playing' && (
-        <Game3D difficulty={difficulty} sensMult={sensMult} onEnd={endGame} onQuit={goToMenu} />
+        <Game3D
+          key={`${difficulty}-${restartSeq}`}
+          difficulty={difficulty}
+          sensMult={sensMult}
+          onEnd={endGame}
+          onQuit={goToMenu}
+          onRestart={quickRestart}
+        />
       )}
 
       {screen === 'over' && results && (

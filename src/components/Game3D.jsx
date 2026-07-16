@@ -16,13 +16,18 @@ import {
   CAMERA_FOV,
   PLAYER_POS,
   COVER_SPOTS,
+  SNITCH_POINTS,
+  SNITCH_EXPOSURE_FACTOR,
+  SNITCH_MIN_DELAY,
+  SNITCH_RESOLVED_MARGIN,
 } from '../config.js'
 
 const INITIAL_DELAY = 0.35
 
-export default function Game3D({ difficulty, sensMult, onEnd, onQuit }) {
+export default function Game3D({ difficulty, sensMult, onEnd, onQuit, onRestart }) {
   const diff = DIFFICULTIES[difficulty]
   const life = RISE_TIME + diff.exposure + HIDE_TIME // full peek lifetime
+  const snitchLife = diff.exposure * (diff.snitchExposureFactor ?? SNITCH_EXPOSURE_FACTOR)
 
   const clockRef = useRef(0)
   const lockedRef = useRef(false)
@@ -30,6 +35,7 @@ export default function Game3D({ difficulty, sensMult, onEnd, onQuit }) {
   const lastSpotRef = useRef(-1)
   const targetSeq = useRef(0)
   const spotPickerRef = useRef(null)
+  const snitchPathPickerRef = useRef(null)
 
   // Authoritative mutable game state (the rAF loop mutates this directly).
   const g = useRef(null)
@@ -45,8 +51,18 @@ export default function Game3D({ difficulty, sensMult, onEnd, onQuit }) {
       bestCombo: 0,
       resolved: 0,
       escaped: 0,
+      fastestHitMs: null,
       target: null,
       nextSpawnAt: INITIAL_DELAY,
+      snitch: null,
+      snitchHits: 0,
+      snitchSpawned: false,
+      // Triggers once this many peek targets have resolved (see
+      // SNITCH_RESOLVED_MARGIN) — tied to game progress, not the clock, so
+      // it's guaranteed a turn even against a player who clears all
+      // TARGET_COUNT targets well before the round's time limit.
+      snitchAtResolved:
+        SNITCH_RESOLVED_MARGIN + Math.floor(Math.random() * (TARGET_COUNT - SNITCH_RESOLVED_MARGIN)),
       ended: false,
     }
   }
@@ -60,6 +76,7 @@ export default function Game3D({ difficulty, sensMult, onEnd, onQuit }) {
     resolved: 0,
   })
   const [target, setTarget] = useState(null)
+  const [snitch, setSnitch] = useState(null)
   const [locked, setLocked] = useState(false)
   const [popups, setPopups] = useState([])
 
@@ -98,6 +115,22 @@ export default function Game3D({ difficulty, sensMult, onEnd, onQuit }) {
     setTarget(t)
   }, [])
 
+  const spawnSnitch = useCallback(() => {
+    const s = g.current
+    // The scene picks a flight path that stays in line of sight the whole
+    // way (see snitchPathPickerRef in GameScene). Only mark it spawned once
+    // a path actually comes back, so a still-unmounted scene (the ref isn't
+    // set yet) just retries next frame instead of quietly writing the round
+    // off as "snitch appeared" when it didn't.
+    const path = snitchPathPickerRef.current ? snitchPathPickerRef.current() : null
+    if (!path) return
+    s.snitchSpawned = true
+    const sn = { id: ++targetSeq.current, spawnAtClock: s.clock, life: snitchLife, path }
+    s.snitch = sn
+    setSnitch(sn)
+    sound.snitchAppear()
+  }, [snitchLife])
+
   const endGame = useCallback(() => {
     const s = g.current
     if (s.ended) return
@@ -115,6 +148,9 @@ export default function Game3D({ difficulty, sensMult, onEnd, onQuit }) {
       shots,
       escaped: s.escaped,
       bestCombo: s.bestCombo,
+      snitchHits: s.snitchHits,
+      snitchSpawned: s.snitchSpawned,
+      fastestHitMs: s.fastestHitMs,
       accuracy: shots > 0 ? s.hits / shots : 0,
       headshotRate: s.hits > 0 ? s.headshots / s.hits : 0,
       timeUsed: +Math.min(diff.time, s.clock).toFixed(1),
@@ -136,6 +172,22 @@ export default function Game3D({ difficulty, sensMult, onEnd, onQuit }) {
       sound.gunshot()
       s.shots += 1
 
+      const sn = s.snitch
+      const snitchHittable = sn && s.clock - sn.spawnAtClock < sn.life
+      if (kind === 'snitch' && snitchHittable) {
+        s.combo += 1
+        s.bestCombo = Math.max(s.bestCombo, s.combo)
+        s.score += SNITCH_POINTS
+        s.hits += 1
+        s.snitchHits += 1
+        s.snitch = null
+        setSnitch(null)
+        sound.snitchCatch()
+        addPopup(`+${SNITCH_POINTS} SNITCH!`, '#ffd23f')
+        snapshot()
+        return
+      }
+
       const t = s.target
       const hittable = t && s.clock - t.spawnAtClock < life
       if ((kind === 'head' || kind === 'body') && hittable) {
@@ -147,6 +199,9 @@ export default function Game3D({ difficulty, sensMult, onEnd, onQuit }) {
         s.score += pts
         s.hits += 1
         s.resolved += 1
+        // Reaction time: spawn (cover starts sliding open) to a landed shot.
+        const reactionMs = (s.clock - t.spawnAtClock) * 1000
+        if (s.fastestHitMs === null || reactionMs < s.fastestHitMs) s.fastestHitMs = reactionMs
         if (kind === 'head') {
           s.headshots += 1
           sound.headshot(s.combo)
@@ -205,8 +260,27 @@ export default function Game3D({ difficulty, sensMult, onEnd, onQuit }) {
             s.nextSpawnAt = s.clock + SPAWN_GAP
             sound.escape()
           }
-        } else if (s.clock >= s.nextSpawnAt && s.resolved < TARGET_COUNT) {
+          // Below Extreme, hold off on the next peek target while the
+          // snitch has the floor so it's never sharing attention with cover.
+        } else if (s.clock >= s.nextSpawnAt && s.resolved < TARGET_COUNT && !(diff.snitchSolo && s.snitch)) {
           spawn()
+        }
+
+        if (s.snitch) {
+          if (s.clock - s.snitch.spawnAtClock >= s.snitch.life) {
+            // Flew off untouched — one shot at it per round, gone for good.
+            s.snitch = null
+            setSnitch(null)
+          }
+          // Below Extreme, wait for a gap between peek targets before
+          // spawning the snitch so it's genuinely the only thing on the map.
+        } else if (
+          !s.snitchSpawned &&
+          s.clock >= SNITCH_MIN_DELAY &&
+          s.resolved >= s.snitchAtResolved &&
+          !(diff.snitchSolo && s.target)
+        ) {
+          spawnSnitch()
         }
 
         if (diff.time - s.clock <= 0 || s.resolved >= TARGET_COUNT) {
@@ -220,7 +294,7 @@ export default function Game3D({ difficulty, sensMult, onEnd, onQuit }) {
     }
     rafRef.current = requestAnimationFrame(frame)
     return () => cancelAnimationFrame(rafRef.current)
-  }, [life, diff.time, spawn, snapshot, endGame])
+  }, [life, diff.time, spawn, spawnSnitch, snapshot, endGame])
 
   const handleQuit = useCallback(() => {
     g.current.ended = true
@@ -228,6 +302,28 @@ export default function Game3D({ difficulty, sensMult, onEnd, onQuit }) {
     if (document.pointerLockElement) document.exitPointerLock()
     onQuit()
   }, [onQuit])
+
+  const handleRestart = useCallback(() => {
+    g.current.ended = true
+    cancelAnimationFrame(rafRef.current)
+    if (document.pointerLockElement) document.exitPointerLock()
+    onRestart()
+  }, [onRestart])
+
+  // Spacebar quick-restart — wipes the round and starts it over (App.jsx
+  // remounts this component with fresh state). Skip key-repeat so holding
+  // the key down doesn't fire it over and over.
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.repeat) return
+      if (e.code === 'Space' || e.key === ' ') {
+        e.preventDefault()
+        handleRestart()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [handleRestart])
 
   return (
     <div className="screen game3d">
@@ -243,11 +339,13 @@ export default function Game3D({ difficulty, sensMult, onEnd, onQuit }) {
           target={target}
           exposure={diff.exposure}
           accent={diff.accent}
+          snitch={snitch}
           sensMult={sensMult}
           clockRef={clockRef}
           onFire={handleFire}
           onLockChange={handleLockChange}
           spotPickerRef={spotPickerRef}
+          snitchPathPickerRef={snitchPathPickerRef}
         />
       </Canvas>
 
@@ -289,6 +387,7 @@ export default function Game3D({ difficulty, sensMult, onEnd, onQuit }) {
               <span>🖱️ Move mouse to look · Left-click to fire</span>
               <span>⎋ Esc releases the mouse</span>
               <span>🎯 Headshots score big — mind the cover</span>
+              <span>⌴ Space restarts the round</span>
             </div>
           </div>
         </div>

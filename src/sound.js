@@ -111,6 +111,21 @@ class SoundEngine {
     this._tone({ freq: 150, glideTo: 80, type: 'sawtooth', duration: 0.18, gain: 0.12 })
   }
 
+  // Golden snitch appears — a quick shimmer so a sharp-eared player knows to
+  // look for it even off-screen.
+  snitchAppear() {
+    this._tone({ freq: 1400, glideTo: 1800, type: 'sine', duration: 0.12, gain: 0.13 })
+    this._tone({ freq: 2100, glideTo: 2600, type: 'sine', duration: 0.1, gain: 0.07 })
+  }
+
+  // Caught it — a bright ascending chime distinct from a normal headshot.
+  snitchCatch() {
+    const notes = [880, 1174, 1568, 2093]
+    notes.forEach((f, i) => {
+      setTimeout(() => this._tone({ freq: f, type: 'sine', duration: 0.16, gain: 0.24 }), i * 55)
+    })
+  }
+
   start() {
     this._tone({ freq: 330, glideTo: 660, type: 'square', duration: 0.18, gain: 0.2 })
   }

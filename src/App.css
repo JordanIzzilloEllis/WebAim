@@ -387,6 +387,52 @@
   color: var(--accent);
   text-shadow: 0 2px 12px rgba(224, 85, 43, 0.3);
 }
+/* Tier colours climb a familiar game-rarity ladder: light blue -> blue ->
+   purple -> pink -> red -> gold, alongside size/weight/glow escalating in
+   step so the flavour text sells the result at a glance. */
+.score-quip {
+  font-size: 24px;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.5px;
+  color: #7ec4e8;
+}
+.score-quip[data-tier='ok'] {
+  color: #3f8ee8;
+}
+.score-quip[data-tier='good'] {
+  font-weight: 900;
+  color: #9b59d0;
+}
+.score-quip[data-tier='great'] {
+  font-size: 27px;
+  font-weight: 900;
+  color: #e0559b;
+  text-shadow: 0 1px 8px rgba(224, 85, 155, 0.4);
+  animation: pop 0.3s ease;
+}
+.score-quip[data-tier='insane'] {
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #e0342b;
+  text-shadow: 0 2px 12px rgba(224, 52, 43, 0.5);
+  animation: pop 0.35s ease;
+}
+.score-quip[data-tier='damn'] {
+  font-size: 34px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  color: #d99400;
+  text-shadow: 0 2px 14px rgba(217, 148, 0, 0.55), 0 0 24px rgba(255, 200, 60, 0.4);
+  animation: pop 0.4s ease, quip-shine 1.4s ease-in-out 0.4s infinite;
+}
+
+@keyframes quip-shine {
+  0%, 100% { text-shadow: 0 2px 14px rgba(217, 148, 0, 0.55), 0 0 24px rgba(255, 200, 60, 0.4); }
+  50% { text-shadow: 0 2px 20px rgba(217, 148, 0, 0.8), 0 0 36px rgba(255, 200, 60, 0.7); }
+}
+
 .grade {
   font-size: 66px;
   font-weight: 900;
