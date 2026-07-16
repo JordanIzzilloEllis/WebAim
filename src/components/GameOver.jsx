@@ -26,7 +26,7 @@ function scoreResultFor(score) {
   return SCORE_TIERS.find((t) => pct >= t.min) ?? SCORE_TIERS[SCORE_TIERS.length - 1]
 }
 
-export default function GameOver({ results, highScore, onPlayAgain, onMenu }) {
+export default function GameOver({ results, highScore, onPlayAgain, onMenu, onOpenSettings }) {
   const diff = DIFFICULTIES[results.difficulty]
   const accuracyPct = Math.round(results.accuracy * 100)
   const hsRatePct = Math.round(results.headshotRate * 100)
@@ -70,6 +70,9 @@ export default function GameOver({ results, highScore, onPlayAgain, onMenu }) {
         </button>
         <button className="btn-ghost" onClick={onMenu}>
           MENU
+        </button>
+        <button className="btn-ghost" onClick={onOpenSettings}>
+          ⚙ Settings
         </button>
       </div>
     </div>

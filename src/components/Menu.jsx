@@ -1,13 +1,7 @@
 import { useState } from 'react'
-import {
-  DIFFICULTIES,
-  DEFAULT_DIFFICULTY,
-  TARGET_COUNT,
-  SENS_MIN,
-  SENS_MAX,
-} from '../config.js'
+import { DIFFICULTIES, DEFAULT_DIFFICULTY, TARGET_COUNT } from '../config.js'
 
-export default function Menu({ onStart, highScores, sensMult, onSensChange }) {
+export default function Menu({ onStart, highScores, onOpenSettings }) {
   const [selected, setSelected] = useState(DEFAULT_DIFFICULTY)
   const diff = DIFFICULTIES[selected]
 
@@ -38,29 +32,18 @@ export default function Menu({ onStart, highScores, sensMult, onSensChange }) {
         })}
       </div>
 
-      <div className="sens-row">
-        <label className="sens-label" htmlFor="sens">Sensitivity</label>
-        <input
-          id="sens"
-          className="sens-slider"
-          type="range"
-          min={SENS_MIN}
-          max={SENS_MAX}
-          step={0.05}
-          value={sensMult}
-          onChange={(e) => onSensChange(parseFloat(e.target.value))}
+      <div className="menu-actions">
+        <button
+          className="btn-primary"
           style={{ '--accent': diff.accent }}
-        />
-        <span className="sens-value">{sensMult.toFixed(2)}×</span>
+          onClick={() => onStart(selected)}
+        >
+          ▶ START
+        </button>
+        <button className="btn-ghost" onClick={onOpenSettings}>
+          ⚙ Settings
+        </button>
       </div>
-
-      <button
-        className="btn-primary"
-        style={{ '--accent': diff.accent }}
-        onClick={() => onStart(selected)}
-      >
-        ▶ START
-      </button>
 
       <p className="hint">
         Click to lock your aim, move the mouse to look, left-click to fire. Headshots score big —

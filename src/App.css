@@ -698,6 +698,154 @@
   color: var(--fg);
   min-width: 48px;
 }
+.sens-row.disabled {
+  opacity: 0.4;
+}
+.sens-row.disabled .sens-slider {
+  pointer-events: none;
+}
+
+/* ---------- Menu actions (Start / Settings) ---------- */
+.menu-actions {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ---------- Settings screen ---------- */
+.settings {
+  gap: 18px;
+  padding: 24px;
+}
+.settings-title {
+  font-size: clamp(28px, 5vw, 40px);
+  font-weight: 900;
+  letter-spacing: 3px;
+  color: var(--fg);
+}
+.settings-panel {
+  width: min(480px, 92vw);
+  padding: 24px 26px;
+  border-radius: 18px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 4px 14px rgba(80, 60, 30, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.settings-panel .sens-row {
+  justify-content: space-between;
+}
+.settings-panel .sens-slider {
+  flex: 1;
+}
+.settings-note {
+  font-size: 12px;
+  color: var(--accent, #e0552b);
+  font-weight: 700;
+}
+.settings-divider {
+  height: 1px;
+  background: var(--panel-border);
+}
+
+/* Basic/CS2 toggle — an explicit choice, so both stay fully clickable;
+   only styling communicates which one is currently driving the game. */
+.sens-mode-toggle {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 12px;
+  background: rgba(90, 70, 40, 0.08);
+}
+.sens-mode-btn {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--muted);
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+.sens-mode-btn:hover {
+  color: var(--fg);
+}
+.sens-mode-btn.active {
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--fg);
+  box-shadow: 0 2px 8px rgba(80, 60, 30, 0.15);
+}
+
+.settings-advanced {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: opacity 0.15s ease;
+}
+/* Dimmed when not the active source, but still fully editable — values here
+   are saved regardless of which mode is selected. */
+.settings-advanced.inactive {
+  opacity: 0.6;
+}
+.settings-subhead {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--fg);
+}
+.settings-hint {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.settings-hint-small {
+  font-size: 11px;
+}
+.cs2-fields {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.cs2-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 140px;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.cs2-field input {
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--fg);
+  text-transform: none;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.7);
+  outline: none;
+}
+.cs2-field input:focus {
+  border-color: var(--accent, #e0552b);
+}
+.settings-edpi {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--fg);
+}
+.settings-actions {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
 
 /* Game-over score headline */
 .score-headline {

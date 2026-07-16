@@ -2,12 +2,27 @@ import { useCallback, useEffect, useState } from 'react'
 import Menu from './components/Menu.jsx'
 import Game3D from './components/Game3D.jsx'
 import GameOver from './components/GameOver.jsx'
-import { DEFAULT_DIFFICULTY, DEFAULT_SENS_MULT } from './config.js'
+import Settings from './components/Settings.jsx'
+import {
+  DEFAULT_DIFFICULTY,
+  DEFAULT_SENS_MULT,
+  DEFAULT_SENS_MODE,
+  SENS_MODE_BASIC,
+  SENS_MODE_CS2,
+  effectiveSensRadPerPixel,
+} from './config.js'
 import { sound } from './sound.js'
 import './App.css'
 
 const HIGH_SCORE_KEY = 'webaim.highscores.v2'
-const SENS_KEY = 'webaim.sens'
+const SETTINGS_KEY = 'aimlite.settings.v1'
+
+const DEFAULT_SETTINGS = {
+  sensMult: DEFAULT_SENS_MULT,
+  cs2Sens: null,
+  cs2Dpi: null,
+  sensMode: DEFAULT_SENS_MODE,
+}
 
 function loadHighScores() {
   try {
@@ -17,15 +32,27 @@ function loadHighScores() {
   }
 }
 
-function loadSens() {
-  const v = parseFloat(localStorage.getItem(SENS_KEY))
-  return Number.isFinite(v) ? v : DEFAULT_SENS_MULT
+function loadSettings() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SETTINGS_KEY))
+    return {
+      sensMult: Number.isFinite(raw?.sensMult) ? raw.sensMult : DEFAULT_SETTINGS.sensMult,
+      cs2Sens: Number.isFinite(raw?.cs2Sens) ? raw.cs2Sens : null,
+      cs2Dpi: Number.isFinite(raw?.cs2Dpi) ? raw.cs2Dpi : null,
+      sensMode: raw?.sensMode === SENS_MODE_CS2 ? SENS_MODE_CS2 : SENS_MODE_BASIC,
+    }
+  } catch {
+    return { ...DEFAULT_SETTINGS }
+  }
 }
 
 export default function App() {
   const [screen, setScreen] = useState('menu')
+  // Where to return when leaving Settings — it can be opened from the menu
+  // or the results screen, and Back should land back on whichever it was.
+  const [settingsReturnTo, setSettingsReturnTo] = useState('menu')
   const [difficulty, setDifficulty] = useState(DEFAULT_DIFFICULTY)
-  const [sensMult, setSensMult] = useState(loadSens)
+  const [settings, setSettings] = useState(loadSettings)
   const [muted, setMuted] = useState(false)
   const [results, setResults] = useState(null)
   const [highScores, setHighScores] = useState(loadHighScores)
@@ -39,13 +66,20 @@ export default function App() {
     sound.setEnabled(!muted)
   }, [muted])
 
-  const changeSens = useCallback((v) => {
-    setSensMult(v)
+  useEffect(() => {
     try {
-      localStorage.setItem(SENS_KEY, String(v))
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
     } catch {
-      /* ignore */
+      /* ignore storage errors */
     }
+  }, [settings])
+
+  const updateSettings = useCallback((partial) => {
+    setSettings((s) => ({ ...s, ...partial }))
+  }, [])
+
+  const resetSettings = useCallback(() => {
+    setSettings({ ...DEFAULT_SETTINGS })
   }, [])
 
   const startGame = useCallback((diffKey) => {
@@ -75,6 +109,11 @@ export default function App() {
   }, [])
 
   const goToMenu = useCallback(() => setScreen('menu'), [])
+  const openSettings = useCallback(() => {
+    setSettingsReturnTo(screen)
+    setScreen('settings')
+  }, [screen])
+  const closeSettings = useCallback(() => setScreen(settingsReturnTo), [settingsReturnTo])
   const playAgain = useCallback(() => startGame(difficulty), [difficulty, startGame])
   const toggleMute = useCallback(() => setMuted((m) => !m), [])
 
@@ -99,19 +138,14 @@ export default function App() {
       </button>
 
       {screen === 'menu' && (
-        <Menu
-          onStart={startGame}
-          highScores={highScores}
-          sensMult={sensMult}
-          onSensChange={changeSens}
-        />
+        <Menu onStart={startGame} highScores={highScores} onOpenSettings={openSettings} />
       )}
 
       {screen === 'playing' && (
         <Game3D
           key={`${difficulty}-${restartSeq}`}
           difficulty={difficulty}
-          sensMult={sensMult}
+          sensRadPerPixel={effectiveSensRadPerPixel(settings)}
           onEnd={endGame}
           onQuit={goToMenu}
           onRestart={quickRestart}
@@ -124,7 +158,12 @@ export default function App() {
           highScore={highScores[results.difficulty]}
           onPlayAgain={playAgain}
           onMenu={goToMenu}
+          onOpenSettings={openSettings}
         />
+      )}
+
+      {screen === 'settings' && (
+        <Settings settings={settings} onChange={updateSettings} onReset={resetSettings} onBack={closeSettings} />
       )}
     </div>
   )

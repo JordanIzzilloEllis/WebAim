@@ -267,6 +267,63 @@ log for full diffs.
     "insane" and "damn" both render the letter S but stay visually distinct
     via `data-tier` (S grows further and picks up the full gold shimmer
     only at "damn").
+15. **CS2-accurate sensitivity (advanced setting) + a real Settings screen.**
+    A user reported being unable to train comfortably because they couldn't
+    dial in their exact CS2 sensitivity, risking their muscle memory. Added
+    `config.js` constants/helpers (`CS_M_YAW = 0.022`, `cs2SensToRadPerPixel`,
+    `effectiveSensRadPerPixel`) implementing the Source-engine turn formula:
+    degrees-per-count = sensitivity × m_yaw (a fixed client constant CS2
+    inherited from CS:GO/Source, essentially never changed by players).
+    Deliberately DPI-free — the same physical mouse produces the same raw
+    counts whether CS2 or this page reads them, so DPI cancels out of the
+    turn-rate math entirely; DPI is collected only to show the eDPI
+    reference number (eDPI = DPI × sensitivity) players may recognize from
+    their own setup, not because it's needed for the conversion. Documented
+    the one real caveat inline: this only matches exactly with the OS mouse
+    in its neutral/no-acceleration mode (Windows: pointer speed at the
+    default 6/11, "Enhance pointer precision" off) — the same setup
+    competitive players already run so raw input isn't altered by OS
+    pointer accel, so it's not an extra ask.
+    Setting a CS2 sensitivity value overrides the basic 0.3–2.5× slider
+    entirely (checked via `cs2Sens != null`, not a separate toggle — typing
+    a value *is* the override, matching how the user described the
+    behavior). Introduced a proper Settings screen (`Settings.jsx`, new
+    `screen === 'settings'` state in `App.jsx`) as a deliberate home for
+    this and future player-config options, replacing the sensitivity
+    slider that used to live inline on the main menu; `Menu.jsx` now just
+    has a "⚙ Settings" button. All settings (basic multiplier, CS2
+    sensitivity, DPI) persist as one object under a new
+    `aimlite.settings.v1` localStorage key (replacing the old standalone
+    `webaim.sens` key — not migrated, since this is a low-stakes solo
+    project and the old key is harmless to leave orphaned) with a "Reset to
+    Defaults" button. `Game3D`/`GameScene` now take a single precomputed
+    `sensRadPerPixel` prop instead of a raw `sensMult`, so there's exactly
+    one place (`effectiveSensRadPerPixel`) that decides which sensitivity
+    mode is active.
+16. **CS2 sensitivity override became an explicit toggle, not an implicit
+    one.** #15 shipped with "entering a CS2 sensitivity value automatically
+    overrides the slider" — but the user's actual ask was to be able to
+    *have* a CS2 sensitivity saved without being locked out of the basic
+    slider, i.e. pick which one is active. The implicit "value present ⇒
+    active" rule couldn't express "I've saved a CS2 value but want to use
+    Basic right now." Added `sensMode` (`SENS_MODE_BASIC` / `SENS_MODE_CS2`)
+    to config.js and the settings object as the explicit source of truth;
+    `effectiveSensRadPerPixel` now checks `sensMode`, only falling back to
+    the basic slider if CS2 mode is selected but no value has been entered
+    yet. `Settings.jsx` gained a Basic/CS2 segmented toggle; the CS2
+    fields stay fully editable regardless of which mode is selected (typing
+    into them no longer flips the mode), just dimmed (`.settings-advanced
+    .inactive`, opacity only — never `pointer-events: none`) when not the
+    active source.
+17. **Settings reachable from the results screen too.** `GameOver.jsx`
+    gained a third action button (⚙ Settings) alongside Play Again/Menu.
+    Since Settings can now be opened from two different screens, "Back"
+    needed to return to whichever one it was opened from rather than always
+    landing on the main menu — `App.jsx` added a `settingsReturnTo` state,
+    set to the current `screen` whenever `openSettings` fires, and
+    `closeSettings` returns to it. `results` state isn't touched by this
+    navigation (only `startGame`/quick-restart clear it), so returning to
+    'over' after a Settings detour still shows the same round's results.
 
 ## Working conventions
 

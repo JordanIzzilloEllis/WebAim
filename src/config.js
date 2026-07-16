@@ -91,6 +91,47 @@ export const DEFAULT_SENS_MULT = 1.0
 export const SENS_MIN = 0.3
 export const SENS_MAX = 2.5
 
+// Advanced: match a player's real CS2 sensitivity so practicing here
+// doesn't fight their muscle memory. CS2 (like CS:GO and the rest of the
+// Source engine family before it) turns the camera by
+// `sensitivity * m_yaw` degrees per raw mouse count, where m_yaw is a fixed
+// client constant (0.022) essentially nobody changes. Deliberately DPI-free:
+// the same physical mouse produces the same raw counts feeding both CS2 and
+// this page, so DPI cancels out of the turn-rate math entirely — it's only
+// used here to show the eDPI reference number players may recognize
+// (eDPI = DPI × sensitivity), not to compute anything.
+// Caveat inherent to any browser-based trainer: this only matches exactly
+// if the OS mouse is set to its neutral/no-acceleration mode (Windows:
+// pointer speed at the default 6/11 notch, "Enhance pointer precision"
+// off) — same setup competitive players already run so their raw input
+// isn't altered by OS pointer accel.
+export const CS_M_YAW = 0.022
+export const CS2_SENS_MIN = 0.01
+export const CS2_SENS_MAX = 8.0
+export const DPI_MIN = 100
+export const DPI_MAX = 32000
+export const DEFAULT_DPI = 800
+
+// Which sensitivity source is active is an explicit choice (SENS_MODE_BASIC
+// / SENS_MODE_CS2), not inferred from whether a CS2 value happens to be
+// filled in — entering a CS2 sensitivity shouldn't silently lock a player
+// out of the basic slider; it should just make the CS2 figure available to
+// switch to.
+export const SENS_MODE_BASIC = 'basic'
+export const SENS_MODE_CS2 = 'cs2'
+export const DEFAULT_SENS_MODE = SENS_MODE_BASIC
+
+export function cs2SensToRadPerPixel(cs2Sens) {
+  return cs2Sens * CS_M_YAW * (Math.PI / 180)
+}
+
+// The value actually fed to the camera each frame. Falls back to the basic
+// slider if CS2 mode is selected but no sensitivity has been entered yet.
+export function effectiveSensRadPerPixel({ sensMult, cs2Sens, sensMode }) {
+  if (sensMode === SENS_MODE_CS2 && cs2Sens != null) return cs2SensToRadPerPixel(cs2Sens)
+  return BASE_SENSITIVITY * sensMult
+}
+
 // Camera / player. Eye is a bit above a standing target's head height so that
 // ground-level targets sit slightly below the crosshair (aim down) while raised
 // targets need an upward flick.

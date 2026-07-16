@@ -24,7 +24,7 @@ import {
 
 const INITIAL_DELAY = 0.35
 
-export default function Game3D({ difficulty, sensMult, onEnd, onQuit, onRestart }) {
+export default function Game3D({ difficulty, sensRadPerPixel, onEnd, onQuit, onRestart }) {
   const diff = DIFFICULTIES[difficulty]
   const life = RISE_TIME + diff.exposure + HIDE_TIME // full peek lifetime
   const snitchLife = diff.exposure * (diff.snitchExposureFactor ?? SNITCH_EXPOSURE_FACTOR)
@@ -345,7 +345,7 @@ export default function Game3D({ difficulty, sensMult, onEnd, onQuit, onRestart 
           exposure={diff.exposure}
           accent={diff.accent}
           snitch={snitch}
-          sensMult={sensMult}
+          sensRadPerPixel={sensRadPerPixel}
           clockRef={clockRef}
           onFire={handleFire}
           onLockChange={handleLockChange}

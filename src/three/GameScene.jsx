@@ -5,7 +5,6 @@ import Environment from './Environment.jsx'
 import Target3D from './Target3D.jsx'
 import Snitch3D from './Snitch3D.jsx'
 import {
-  BASE_SENSITIVITY,
   MAX_YAW,
   MAX_PITCH,
   CAMERA_FOV,
@@ -24,7 +23,7 @@ export default function GameScene({
   exposure,
   accent,
   snitch,
-  sensMult,
+  sensRadPerPixel,
   clockRef,
   onFire,
   onLockChange,
@@ -189,9 +188,8 @@ export default function GameScene({
 
     const onMouseMove = (e) => {
       if (document.pointerLockElement !== canvas) return
-      const sens = BASE_SENSITIVITY * sensMult
-      yaw.current = clamp(yaw.current - e.movementX * sens, -MAX_YAW, MAX_YAW)
-      pitch.current = clamp(pitch.current - e.movementY * sens, -MAX_PITCH, MAX_PITCH)
+      yaw.current = clamp(yaw.current - e.movementX * sensRadPerPixel, -MAX_YAW, MAX_YAW)
+      pitch.current = clamp(pitch.current - e.movementY * sensRadPerPixel, -MAX_PITCH, MAX_PITCH)
     }
 
     const onLockChange = () => {
@@ -209,7 +207,7 @@ export default function GameScene({
       document.removeEventListener('pointerlockchange', onLockChange)
       if (document.pointerLockElement === canvas) document.exitPointerLock()
     }
-  }, [gl, camera, scene, raycaster, sensMult])
+  }, [gl, camera, scene, raycaster, sensRadPerPixel])
 
   useFrame(() => {
     camera.rotation.set(pitch.current, yaw.current, 0)
